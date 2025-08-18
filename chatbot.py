@@ -18,8 +18,8 @@ import streamlit as st
 st.set_page_config(page_title="AI Text Assistant", page_icon="")
 
 # Title and initial description
-st.title('AI Rajubot')
-st.write("This chatbot is created by IBM")
+st.title('AI Chatbot')
+st.write("This chatbot is created by Vedant")
 st.markdown("Hello! I'm your AI assistant. How can I assist you today?")
 st.image("https://thumbs.dreamstime.com/b/robot-icon-chat-bot-sign-support-service-concept-chatbot-character-flat-style-robot-icon-chat-bot-sign-support-service-124978456.jpg", use_column_width=True)
 
