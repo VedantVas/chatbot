@@ -15,6 +15,7 @@ from PIL import Image
 import pytesseract
 import docx
 import fitz  # PyMuPDF for PDF reading
+pytesseract.pytesseract.tesseract_cmd = "tesseract" 
 
 #Streamlit app configurations
 st.set_page_config(page_title="AI Text Assistant", page_icon="")
