@@ -1,43 +1,62 @@
 from langchain.prompts import (
-    ChatPromptTemplate, # Lets you define a full conversation structure.
-    HumanMessagePromptTemplate, # Represents a user’s message template.
-    MessagesPlaceholder, # Placeholder for previous conversation messages (chat history).
-    SystemMessagePromptTemplate, # Represents system-level instructions for the AI (like role and behavior).
+    ChatPromptTemplate,
+    HumanMessagePromptTemplate,
+    MessagesPlaceholder,
+    SystemMessagePromptTemplate,
 )
 
-
-
-from langchain_community.chat_message_histories import StreamlitChatMessageHistory #  Stores chat history so it can be used between turns in Streamlit.
-from langchain_core.runnables.history import RunnableWithMessageHistory #Wraps an AI chain so it can keep track of conversation history across requests.
+from langchain_community.chat_message_histories import StreamlitChatMessageHistory
+from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_google_genai import ChatGoogleGenerativeAI 
 from langchain.schema.output_parser import StrOutputParser
 
 import streamlit as st
+from PIL import Image
+import pytesseract
+import docx
+import fitz  # PyMuPDF for PDF reading
 
-# Streamlit app configuration
+#Streamlit app configurations
 st.set_page_config(page_title="AI Text Assistant", page_icon="")
 
-# Title and initial description
-st.title('AI Chatbot')
-st.write("This chatbot is created by Vedant")
+# Title and description
+st.title('AI Rajubot')
+st.write("This chatbot is created by IBM")
 st.markdown("Hello! I'm your AI assistant. How can I assist you today?")
 st.image("https://thumbs.dreamstime.com/b/robot-icon-chat-bot-sign-support-service-concept-chatbot-character-flat-style-robot-icon-chat-bot-sign-support-service-124978456.jpg", use_container_width=True)
 
-# Function to get and store the API key securely in session state
+#Function to get API key 
 def get_api_key():
     if "api_key" not in st.session_state:
         st.session_state["api_key"] = ""
     api_key = st.text_input("Enter your Google API Key:", type="password", key="api_key")
     return api_key
 
-# Prompt user for API key input
 api_key = get_api_key()
 
-# Ensure the API key is available
+#File extraction Helpers
+def extract_text_from_file(uploaded_file):
+    text = ""
+    if uploaded_file.name.endswith(".txt"):
+        text = uploaded_file.read().decode("utf-8")
+    elif uploaded_file.name.endswith(".docx"):
+        doc = docx.Document(uploaded_file)
+        text = "\n".join([para.text for para in doc.paragraphs])
+    elif uploaded_file.name.endswith(".pdf"):
+        pdf = fitz.open(stream=uploaded_file.read(), filetype="pdf")
+        for page in pdf:
+            text += page.get_text()
+    return text
+
+def extract_text_from_image(uploaded_file):
+    image = Image.open(uploaded_file)
+    return pytesseract.image_to_string(image)
+
+#Ensure API key is given 
 if not api_key:
     st.warning("Please enter your API Key to continue.")
 else:
-    # Create a prompt template
+    # Prompt template
     prompt = ChatPromptTemplate(
         messages=[
             SystemMessagePromptTemplate.from_template(
@@ -48,16 +67,12 @@ else:
         ]
     )
 
-    # Initialize message history
     msgs = StreamlitChatMessageHistory(key="langchain_messages")
 
-    # Set up the Google AI model using the provided API key
     model = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=api_key)
 
-    # Combine prompt, model, and output parser
     chain = prompt | model | StrOutputParser()
 
-    # Combine chain with history for maintaining session
     chain_with_history = RunnableWithMessageHistory(
         chain,
         lambda session_id: msgs,
@@ -65,25 +80,40 @@ else:
         history_messages_key="chat_history",
     )
 
-    # Get user input
+   #File Upload and Image upload
+    st.subheader("Upload a File or Image")
+
+    uploaded_file = st.file_uploader("Choose a file (txt, pdf, docx, jpg, png)", 
+                                     type=["txt", "pdf", "docx", "jpg", "jpeg", "png"])
+
+    extracted_text = ""
+    if uploaded_file is not None:
+        if uploaded_file.type.startswith("image/"):
+            st.image(uploaded_file, caption="Uploaded Image", use_container_width=True)
+            extracted_text = extract_text_from_image(uploaded_file)
+        else:
+            extracted_text = extract_text_from_file(uploaded_file)
+
+        st.text_area("Extracted Content", extracted_text, height=200)
+
+   #User inputs Section ->>
     user_input = st.text_input("Enter your question in English:", "")
 
-    # Check if user input is provided
     if user_input:
         st.chat_message("human").write(user_input)
 
-        # Assistant's response
         with st.chat_message("assistant"):
             message_placeholder = st.empty()
             full_response = ""
 
-            # Configuration dictionary
+            # Combine extracted text with user question
+            context = f"Context from uploaded file/image:\n{extracted_text}\n\n" if extracted_text else ""
+            final_question = context + f"User Question: {user_input}"
+
             config = {"configurable": {"session_id": "any"}}
 
-            # Get response from AI model
-            response = chain_with_history.stream({"question": user_input}, config)
+            response = chain_with_history.stream({"question": final_question}, config)
 
-            # Stream and display response in real-time
             for res in response:
                 full_response += res or ""
                 message_placeholder.markdown(full_response + "|")
