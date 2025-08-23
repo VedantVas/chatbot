@@ -4,3 +4,7 @@ langchain-community
 langchain-core
 langchain-google-genai
 protobuf
+pillow
+pytesseract
+python-docx
+PyMuPDF
