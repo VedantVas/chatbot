@@ -7,15 +7,16 @@ from langchain_core.prompts import (
 
 from langchain_community.chat_message_histories import StreamlitChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
-from langchain_google_genai import ChatGoogleGenerativeAI 
-from langchain.schema.output_parser import StrOutputParser
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.output_parsers import StrOutputParser
 
 import streamlit as st
 from PIL import Image
 import pytesseract
 import docx
 import fitz  # PyMuPDF for PDF reading
-pytesseract.pytesseract.tesseract_cmd = "tesseract" 
+pytesseract.pytesseract.tesseract_cmd = "tesseract"
+
 
 #Streamlit app configurations
 st.set_page_config(page_title="AI Text Assistant", page_icon="")
