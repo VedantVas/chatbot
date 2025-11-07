@@ -15,28 +15,39 @@ from PIL import Image
 import pytesseract
 import docx
 import fitz  # PyMuPDF for PDF reading
+
+# Configure Tesseract
 pytesseract.pytesseract.tesseract_cmd = "tesseract"
 
+# Streamlit page setup
+st.set_page_config(page_title="AI Rajubot", page_icon="🤖")
+st.title("🤖 AI Rajubot")
+st.markdown("### Hello! I'm your AI assistant. How can I assist you today?")
+st.image(
+    "https://thumbs.dreamstime.com/b/robot-icon-chat-bot-sign-support-service-concept-chatbot-character-flat-style-robot-icon-chat-bot-sign-support-service-124978456.jpg",
+    use_container_width=True,
+)
+st.write("Developed by **Vedant Vas**")
 
-#Streamlit app configurations
-st.set_page_config(page_title="AI Text Assistant", page_icon="")
-
-# Title and description
-st.title('AI Rajubot')
-st.write("This chatbot is created by Vedant")
-st.markdown("Hello! I'm your AI assistant. How can I assist you today?")
-st.image("https://thumbs.dreamstime.com/b/robot-icon-chat-bot-sign-support-service-concept-chatbot-character-flat-style-robot-icon-chat-bot-sign-support-service-124978456.jpg", use_container_width=True)
-
-#Function to get API key 
+# Function to get and store API key
 def get_api_key():
+    st.markdown("#### 🔑 Enter your Google API Key")
     if "api_key" not in st.session_state:
-        st.session_state["api_key"] = ""
-    api_key = st.text_input("Enter your Google API Key:", type="password", key="api_key")
-    return api_key
+        st.session_state.api_key = ""
+        st.session_state.key_entered = False
 
-api_key = get_api_key()
+    st.session_state.api_key = st.text_input(
+        "Google API Key:",
+        type="password",
+        value=st.session_state.api_key,
+        placeholder="Enter your Google API key here",
+    )
 
-#File extraction Helpers
+    if st.session_state.api_key:
+        st.session_state.key_entered = True
+
+
+# File reading helpers
 def extract_text_from_file(uploaded_file):
     text = ""
     if uploaded_file.name.endswith(".txt"):
@@ -50,14 +61,20 @@ def extract_text_from_file(uploaded_file):
             text += page.get_text()
     return text
 
+
 def extract_text_from_image(uploaded_file):
     image = Image.open(uploaded_file)
     return pytesseract.image_to_string(image)
 
-#Ensure API key is given 
-if not api_key:
-    st.warning("Please enter your API Key to continue.")
-else:
+
+# Ask for API key first
+get_api_key()
+
+if "key_entered" in st.session_state and st.session_state.key_entered:
+    api_key = st.session_state.api_key
+
+    st.success("✅ API key added successfully! You can now upload a file or ask a question.")
+
     # Prompt template
     prompt = ChatPromptTemplate(
         messages=[
@@ -70,9 +87,7 @@ else:
     )
 
     msgs = StreamlitChatMessageHistory(key="langchain_messages")
-
     model = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=api_key)
-
     chain = prompt | model | StrOutputParser()
 
     chain_with_history = RunnableWithMessageHistory(
@@ -82,11 +97,12 @@ else:
         history_messages_key="chat_history",
     )
 
-   #File Upload and Image upload
-    st.subheader("Upload a File or Image")
-
-    uploaded_file = st.file_uploader("Choose a file (txt, pdf, docx, jpg, png)", 
-                                     type=["txt", "pdf", "docx", "jpg", "jpeg", "png"])
+    # File or image upload section
+    st.subheader("📎 Upload a File or Image")
+    uploaded_file = st.file_uploader(
+        "Choose a file (txt, pdf, docx, jpg, jpeg, png)",
+        type=["txt", "pdf", "docx", "jpg", "jpeg", "png"],
+    )
 
     extracted_text = ""
     if uploaded_file is not None:
@@ -96,10 +112,11 @@ else:
         else:
             extracted_text = extract_text_from_file(uploaded_file)
 
-        st.text_area("Extracted Content", extracted_text, height=200)
+        st.text_area("📄 Extracted Content", extracted_text, height=200)
 
-   #User inputs Section ->>
-    user_input = st.text_input("Enter your question in English:", "")
+    # User question input
+    st.subheader("💬 Ask a Question")
+    user_input = st.text_input("Enter your question in English:")
 
     if user_input:
         st.chat_message("human").write(user_input)
@@ -118,8 +135,10 @@ else:
 
             for res in response:
                 full_response += res or ""
-                message_placeholder.markdown(full_response + "|")
+                message_placeholder.markdown(full_response + "▌")
                 message_placeholder.markdown(full_response)
-
     else:
-        st.warning("Please enter your question.")
+        st.info("💡 Type your question above to start chatting!")
+
+else:
+    st.warning("⚠️ Please enter your Google API Key above to continue.")
